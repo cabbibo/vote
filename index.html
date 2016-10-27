@@ -1,0 +1,632 @@
+<html>
+
+
+  <head>
+
+      <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    
+    <meta name="twitter:card" content="photo">
+    <meta name="twitter:site" content="@cabbibo">
+    <meta name="twitter:creator" content="@cabbibo">
+    <meta name="twitter:url" content="http://cabbi.bo/bernie">
+    <meta name="twitter:title" content="LET'S GO VOTE!!!">
+    <meta name="twitter:description" content="#FeelTheBern">
+    <meta name="twitter:creator" content="@cabbibo">
+    <meta name="twitter:image" content="http://cabbi.bo/bernie/image.png">
+    <meta name="twitter:image:width" content="1440">
+    <meta name="twitter:image:height" content="900">
+    <meta name="twitter:domain" content="cabbi.bo">
+    <meta itemprop="name" content="Cabbi.bo">
+    <meta itemprop="description" content="#FeelTheBern">
+    <meta itemprop="image" src="http://cabbi.bo/bernie/image.png">
+    <meta property="og:title" content="LET'S GO VOTE!!!">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="http://cabbi.bo/bernie/image.png"/>
+    <meta property="og:site_name" content="Cabbi.bo">
+    <meta property="og:description" content="#FeelTheBern">
+
+    <style>
+      body{ margin: 0px; background: #fff; color:#fff;background: #000; }
+      #howTo{
+        z-index: 99;
+        position:absolute;
+        
+        //right:0px;
+        width: 100%;
+        //height:70%;
+        //left:15%;
+        //bottom:0%;
+        text-align: center;
+        font-family: "GeoSans";
+        //background: rgba( 255,255,255, 0);
+        //border: 3px solid white;
+        padding:20px;
+        font-size: 80px;
+
+         /* Hide the text. */
+        //text-indent: 100%;
+       // white-space: nowrap;
+       // overflow: hidden;
+
+        //visibility: hidden;
+
+      }
+      //#howTo:hover{
+      //  background: rgba(255, 255,255,.5);
+      //  /* Hide the text. */
+      //  text-indent: 0%;
+      //  white-space: normal;
+      //  overflow: initial;
+      //}
+      a{
+        text-decoration: none;
+        color:#fff;
+        background: #000;
+        font-size: 60px;
+      }
+      a:hover{
+        text-decoration: underline;
+      }
+      @font-face {
+              font-family: "GeoSans";
+              src: url("lib/GeosansLight.ttf");
+            }
+
+            #selector {
+    width:100%;
+    height:100%;
+}
+
+#howTo{
+  font-size:40px;
+  width:20%;
+  background:none;
+  height:100%;
+  text-align: left;
+}
+
+#howTo:hover{
+ // background:#000;
+}
+
+
+    </style>
+  </head>
+
+  <body>
+
+    <div id="howTo"></div>
+
+    <script src="lib/three.min.js">             </script>
+    <script src="lib/jquery.min.js">            </script>
+    <script src="MouseMoveControls.js">     </script>
+    <script src="ObjectControls.js">     </script>
+    <script src="lib/stats.min.js">             </script>
+    <script src="lib/underscore.js">             </script>
+    
+    <script src="lib/AudioController.js">       </script>
+    <script src="lib/AudioTexture.js">       </script>
+    <script src="lib/AudioBuffer.js">       </script>
+    <script src="lib/BufferedAudio.js">       </script>
+   
+
+    <script src="lib/ShaderLoader.js"></script>
+
+    <script src="Hologram.js"></script>
+
+    <script>
+
+
+    var howTo = document.getElementById("howTo");
+
+    if( !webgl_detect() || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+
+      howTo.innerHTML = "Non Mobile WebGL Required<br/><a href='http://voteforbernie.org/'>Click Here to Learn How to Vote for Bernie</a>"
+      
+      
+
+      document.body.style.backgroundImage = "url('fallbackGif.gif')";
+      document.body.style.backgroundSize = "cover";
+      var x = document.createElement("img");
+      x.src='fallbackGif.gif'
+      x.id ='selector'
+
+      //print("HSS")
+      //document.body.appendChild( x );
+
+      throw new Error('');
+
+     
+    }
+      var howTo = document.getElementById("howTo");
+
+      var bernSound , twitSound , fbSound, infoSound;
+
+
+      var matcap = THREE.ImageUtils.loadTexture('img/rough-aluminium.jpg');
+      var text = THREE.ImageUtils.loadTexture('vote-counts1.png');
+      var twitText = THREE.ImageUtils.loadTexture('twitter_2.png');
+      var fbText = THREE.ImageUtils.loadTexture('facebook_2.png');
+      var infoText = THREE.ImageUtils.loadTexture('info_1.png');
+      var noise = THREE.ImageUtils.loadTexture('img/noise.jpg');
+
+      var uniforms = {
+
+        time: { type:"f" , value: 0 },
+
+        t_matcap:{ type:"t" , value: matcap },
+        t_text:{type:"t", value:text},
+        t_noise:{type:"f",value:noise},
+        //t_audio:{type:"t",value:null},
+        hovered:{type:"f", value:0},
+        stepDepth:{ type:"f" , value: .01 },
+        oscillationSize:{ type:"f" , value: 30. },
+        lightPos:{ type:"v3" , value: new THREE.Vector3( 2 , 0 , 0 ) },
+
+      }
+
+      var meshes = [];
+      var camera, renderer, scene , controls;
+      
+      var vs, fs;
+
+      var geometry, material , light;
+
+      var stats;
+
+      var shaders = new ShaderLoader( 'shaders' );
+
+      shaders.shaderSetLoaded = function(){
+        init();
+        animate();
+       
+      }
+
+      //shaders.load( 'vs-bifrost' , 'bifrost' , 'vertex' );
+      //shaders.load( 'fs-bifrost' , 'bifrost' , 'fragment' );
+
+      shaders.load( 'vs-hologram' , 'hologram' , 'vertex' );
+      shaders.load( 'fs-hologram' , 'hologram' , 'fragment' );
+
+      var audio = new AudioController();
+
+      var aBuff = new AudioBuffer( audio , "audio/pureSound.mp3" );
+ 
+      aBuff.addLoadEvent(function(){
+    
+        console.log( this );
+        twitSound = new BufferedAudio( this.buffer , audio.ctx , audio.gain , false );
+
+      }.bind( aBuff));
+
+      var aFBuff = new AudioBuffer( audio , "audio/crackleSound.mp3" );
+ 
+      aFBuff.addLoadEvent(function(){
+    
+        console.log( this );
+        fbSound = new BufferedAudio( this.buffer , audio.ctx , audio.gain , false );
+
+      }.bind( aFBuff));
+
+      var bernBuff = new AudioBuffer( audio , "audio/slipperySound.mp3" );
+ 
+      bernBuff.addLoadEvent(function(){
+    
+        console.log( this );
+        bernSound = new BufferedAudio( this.buffer , audio.ctx , audio.gain , false );
+
+      }.bind( bernBuff));
+
+      var infoBuff = new AudioBuffer( audio , "audio/tangSound.mp3" );
+ 
+      infoBuff.addLoadEvent(function(){
+    
+        console.log( this );
+        infoSound = new BufferedAudio( this.buffer , audio.ctx , audio.gain , false );
+
+      }.bind( infoBuff));
+
+
+
+
+    //audioBuffers.push( aBuff );
+
+
+      var title;
+
+      var blipSpeed = 1;
+      var blipSlowdown = .8;
+
+
+      function init(){
+
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+
+        camera = new THREE.PerspectiveCamera( 65 , w/h , .01 , 100 );
+        camera.position.z = .3;
+
+        controls = new THREE.MouseMoveControls( camera );
+        scene = new THREE.Scene();
+        objectControls = new ObjectControls( camera );
+
+        geometry = new THREE.PlaneGeometry( 2, 2 );
+        geometry.computeTangents();
+
+        clock = new THREE.Clock();
+
+
+        var dir = [
+
+          //[1,0,0],
+          //[-1,0,0],
+          //[0,1,0],
+          //[0,-1,0],
+          [0,0,1],
+          //[0,0,-1],
+
+        ];
+
+        cube = new THREE.Object3D();
+
+
+        var m = Hologram( 
+            geometry, 
+            uniforms,
+            shaders.vertexShaders.hologram,
+            shaders.fragmentShaders.hologram
+         );
+
+        m.position.x = 0; 
+        m.position.y = 0; 
+        m.position.z = .00001; 
+
+        m.lookAt( new THREE.Vector3() );
+        cube.add( m );
+        meshes.push( m );
+
+
+
+        // Bern holo
+
+        var u = {
+
+          time: uniforms.time, 
+
+          t_matcap:{ type:"t" , value: matcap },
+          t_text:{type:"t", value:text},
+          hovered:{type:"f", value:0},
+          t_noise:{type:"t",value:noise},
+          //t_audio:{type:"t",value:null},
+          stepDepth:{ type:"f" , value: .07 },
+          oscillationSize:{ type:"f" , value: 30. },
+          lightPos:{ type:"v3" , value: new THREE.Vector3( 2 , 0 , 0 ) },
+
+        }
+
+        geometry = new THREE.PlaneGeometry( .46, .21 );
+        geometry.computeTangents();
+
+        var m = Hologram( 
+            geometry, 
+            u,
+            shaders.vertexShaders.hologram,
+            shaders.fragmentShaders.hologram
+         );
+
+        m.position.x = 0; 
+        m.position.y = 0; 
+        m.position.z = 0.001; 
+
+        m.lookAt( new THREE.Vector3() );
+        cube.add( m );
+        meshes.push( m );
+
+        m.hoverOver = function(){
+          blip();
+          this.material.uniforms.hovered.value = 1;
+          if( bernSound ){ bernSound.play();}
+          howTo.innerHTML = "Go Out and Vote!!!";
+
+        }
+        m.hoverOut = function(){
+          howTo.innerHTML = "";
+
+
+          this.material.uniforms.hovered.value = 0;
+
+        }
+
+        m.select = function(){
+          window.location = "https://www.usa.gov/voting"
+        }
+        objectControls.add( m );
+
+
+
+        var u = {
+
+          time: uniforms.time, 
+
+          t_matcap:{ type:"t" , value: matcap },
+          t_text:{type:"t", value:twitText},
+          hovered:{type:"f", value:0},
+          t_noise:uniforms.t_noise,
+          //t_audio:{type:"t",value:null},
+          stepDepth:{ type:"f" , value: .07 },
+          oscillationSize:{ type:"f" , value: 30. },
+          lightPos:{ type:"v3" , value: new THREE.Vector3( 2 , 0 , 0 ) },
+
+        }
+
+        geometry = new THREE.PlaneGeometry( .5 , .5 );
+        geometry.computeTangents();
+        var m2 = Hologram( 
+            geometry, 
+            u,
+            shaders.vertexShaders.hologram,
+            shaders.fragmentShaders.hologram
+         );
+
+        m2.position.x = .18; 
+        m2.position.y = -.05; 
+        m2.position.z = 0.06; 
+
+        m2.scale.x = .1;
+        m2.scale.y = .1;
+        m2.scale.z = .1;
+
+        m2.rotation.y = Math.PI;
+
+        m2.hoverOver = function(){
+          blip();
+          this.material.uniforms.hovered.value = 1;
+          if( twitSound ){ twitSound.play();}
+          howTo.innerHTML = "Share On Twitter!";
+        }
+
+        m2.hoverOut = function(){
+          howTo.innerHTML = "";
+
+          this.material.uniforms.hovered.value = 0;
+
+        }
+
+        m2.select = function(){
+          window.location = "http://twitter.com/share?text=%23VOTE%20:%20&url=http://cabbi.bo/vote"
+        }
+        objectControls.add( m2 );
+
+        //m2.lookAt( new THREE.Vector3() );
+        cube.add( m2 );
+        meshes.push( m2 );
+
+        var u = {
+
+          time: uniforms.time, 
+
+          t_matcap:{ type:"t" , value: matcap },
+          t_text:{type:"t", value:fbText},
+          t_noise:uniforms.t_noise,
+          hovered:{type:"f", value:0},
+          //t_audio:{type:"t",value:null},
+          stepDepth:{ type:"f" , value: .07 },
+          oscillationSize:{ type:"f" , value: 30. },
+          lightPos:{ type:"v3" , value: new THREE.Vector3( 2 , 0 , 0 ) },
+
+        }
+
+        geometry = new THREE.PlaneGeometry( .5 , .5 );
+        geometry.computeTangents();
+        var m2 = Hologram( 
+            geometry, 
+            u,
+            shaders.vertexShaders.hologram,
+            shaders.fragmentShaders.hologram
+         );
+
+        m2.position.x = .18; 
+        m2.position.y = -.1; 
+        m2.position.z = 0.06; 
+
+        m2.scale.x = .1;
+        m2.scale.y = .1;
+        m2.scale.z = .1;
+
+        m2.rotation.y = Math.PI;
+
+        m2.hoverOver = function(){
+          blip();
+          this.material.uniforms.hovered.value = 1;
+          if( fbSound ){ fbSound.play();}
+          howTo.innerHTML = "Share On Facebook!";
+        }
+
+        m2.hoverOut = function(){
+          howTo.innerHTML = "";
+
+          this.material.uniforms.hovered.value = 0;
+
+        }
+        m2.select = function(){
+          window.location = "http://www.facebook.com/sharer.php?u=http://cabbi.bo/vote"
+        }
+        objectControls.add( m2 );
+
+        //m2.lookAt( new THREE.Vector3() );
+        cube.add( m2 );
+        meshes.push( m2 );
+
+
+        var u = {
+
+          time: uniforms.time, 
+
+          t_matcap:{ type:"t" , value: matcap },
+          t_text:{type:"t", value:infoText},
+          t_noise:uniforms.t_noise,
+          hovered:{type:"f", value:0},
+          //t_audio:{type:"t",value:null},
+          stepDepth:{ type:"f" , value: .07 },
+          oscillationSize:{ type:"f" , value: 30. },
+          lightPos:{ type:"v3" , value: new THREE.Vector3( 2 , 0 , 0 ) },
+
+        }
+
+        geometry = new THREE.PlaneGeometry( .5 , .5 );
+        geometry.computeTangents();
+        var m2 = Hologram( 
+            geometry, 
+            u,
+            shaders.vertexShaders.hologram,
+            shaders.fragmentShaders.hologram
+         );
+
+        m2.position.x = .2; 
+        m2.position.y = .05; 
+        m2.position.z = 0.06; 
+
+        m2.scale.x = .2;
+        m2.scale.y = .2;
+        m2.scale.z = .2;
+
+        m2.rotation.y = Math.PI;
+
+        m2.hoverOver = function(){
+          blip();
+          this.material.uniforms.hovered.value = 1;
+          if( infoSound ){ infoSound.play();}
+          howTo.innerHTML = "Spreadsheet Comparing some Bay Area voting guides!<br/> ( THANKS GRANT! )";
+        }
+
+        m2.hoverOut = function(){
+          howTo.innerHTML = "";
+          this.material.uniforms.hovered.value = 0;
+
+        }
+        m2.select = function(){
+          window.location = "https://docs.google.com/spreadsheets/d/1MXEaXqLcgxzd4eg0CO_omt_mSYC2IQjk9fDmzPSV0i4/edit?usp=sharing"
+        }
+        objectControls.add( m2 );
+
+
+
+        //m2.lookAt( new THREE.Vector3() );
+        cube.add( m2 );
+        meshes.push( m2 );
+
+        scene.add( cube );
+
+
+
+
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setSize( w , h );
+
+        document.body.appendChild( renderer.domElement );
+        stats = new Stats();
+        stats.domElement.style.position = "absolute";
+        stats.domElement.style.left = "0px";
+        stats.domElement.style.bottom = "-30px";
+        stats.domElement.style.zIndex = "999";
+        //document.body.appendChild( stats.domElement );
+
+        
+        // Making sure our renderer is always the right size
+        window.addEventListener( 'resize', onWindowResize , false );
+   
+
+
+      }
+
+      function animate(){
+
+        objectControls.update();
+
+        var d = clock.getDelta();
+        uniforms.time.value += d * blipSpeed;
+
+        blipSpeed -= blipSlowdown;
+        if( blipSpeed < 1 ){ blipSpeed = 1; }
+
+        controls.update();
+
+        //cube.rotation.x += d/10;
+        //cube.rotation.y += d/10;
+        //cube.rotation.z += d/10;
+
+
+        for( var i = 0; i < meshes.length; i++ ){
+          meshes[i].update();
+        }
+
+
+
+        requestAnimationFrame( animate );
+        stats.update();
+        renderer.render( scene , camera );
+      }
+
+
+
+      // Resets the renderer to be the proper size
+      function onWindowResize(){
+
+
+
+        camera.aspect = window.innerWidth  / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+
+        renderer.setSize(window.innerWidth , window.innerHeight);
+       
+        var dpr = devicePixelRatio || 1;
+
+        //camUniforms.SS.value.x = window.innerWidth * dpr;
+        //camUniforms.SS.value.y = window.innerHeight * dpr;
+
+
+      }
+
+      function blip(){
+
+        blipSpeed += 5;
+
+
+      }
+
+function webgl_detect(return_context)
+{
+    if (!!window.WebGLRenderingContext) {
+        var canvas = document.createElement("canvas"),
+             names = ["webgl", "experimental-webgl", "moz-webgl", "webkit-3d"],
+           context = false;
+
+        for(var i=0;i<4;i++) {
+            try {
+                context = canvas.getContext(names[i]);
+                if (context && typeof context.getParameter == "function") {
+                    // WebGL is enabled
+                    if (return_context) {
+                        // return WebGL object if the function's argument is present
+                        return {name:names[i], gl:context};
+                    }
+                    // else, return just true
+                    return true;
+                }
+            } catch(e) {}
+        }
+
+        // WebGL is supported, but disabled
+        return false;
+    }
+
+    // WebGL not supported
+    return false;
+}
+
+    </script>
+
+  </body>
+</html>
